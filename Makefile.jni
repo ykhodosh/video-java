@@ -1,0 +1,149 @@
+ifeq ($(JAVA_HOME),)
+$(error Must define JAVA_HOME)
+endif
+
+ifeq ($(JAVA_OS_NAME),)
+$(error Must define JAVA_OS_NAME)
+endif
+
+ifeq ($(JAVA_OS_ARCH),)
+$(error Must define JAVA_OS_ARCH)
+endif
+
+define SANITIZE
+$(shell echo $(1) | tr ' ' '_' | tr '[A-Z]' '[a-z]')
+endef
+
+ARTIFACT_NAME    := twilio-video
+ARTIFACT_VERSION := 1.0.0
+
+PWD        := $(shell pwd)
+
+SRC_DIR    := $(PWD)/src/main/java/com/twilio/sdk/video
+TARGET_DIR := $(PWD)/target
+CLASS_DIR  := $(TARGET_DIR)/classes
+LIB_DIR    := $(CLASS_DIR)/libs/$(call SANITIZE,$(JAVA_OS_ARCH))-$(call SANITIZE,$(JAVA_OS_NAME))
+SRC        := $(SRC_DIR)/twilio-video.cc
+OBJ        := $(SRC_DIR)/twilio-video.o
+SWIG_FILES := $(SRC_DIR)/twilio-video.i
+
+ifeq ($(DEBUG),1)
+DEPS_FOLDER := debug
+else
+DEPS_FOLDER := release
+endif
+
+VIDEO_CAPTURE_SRC = $(SRC_DIR)/twilio-video-capture.cc
+VIDEO_CAPTURE_INC = $(SRC_DIR)/twilio-video-capture.h
+VIDEO_CAPTURE_OBJ = $(SRC_DIR)/twilio-video-capture.o
+
+LIB_DIRS  := -L$(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib
+INC_DIRS  := -I$(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/include/third_party/webrtc \
+             -I$(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/include
+CXXFLAGS  := -DWEBRTC_POSIX -D_REENTRANT -fPIC -DPIC -Wall -pedantic $(CXXFLAGS)
+SWIGFLAGS := -DLOCKABLE
+LDLIBS    := $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libresiprocate.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libboringssl.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libwebrtc.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libPocoFoundation.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libPocoUtil.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libPocoNet.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libPocoNetSSL.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libPocoCrypto.a \
+             $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libtwilio-video.a
+
+# Includes
+ifeq ($(shell uname -s),Darwin)
+    FRAMEWORKS = -framework CoreFoundation \
+                 -framework CoreServices   \
+                 -framework Foundation     \
+                 -framework AVFoundation   \
+                 -framework AudioToolbox   \
+                 -framework VideoToolbox   \
+                 -framework CoreAudio      \
+                 -framework CoreGraphics   \
+                 -framework CoreVideo      \
+                 -framework CoreMedia      \
+                 -framework CFNetwork      \
+                 -framework Security       \
+                 -framework SystemConfiguration
+
+    PLATFORM    = darwin
+
+    # Standard location for Java on Mac OSX
+    INC_DIRS   += -I/System/Library/Frameworks/JavaVM.framework/Headers -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/darwin
+    CXXFLAGS   += -std=c++11 -DWEBRTC_MAC -Wno-extra-semi
+    SWIGFLAGS  += -D__APPLE__=1
+    LDLIBS     += $(FRAMEWORKS) $(TARGET_DIR)/dependency/twilio-video/$(JAVA_OS_ARCH)/appleclang-9.0/$(DEPS_FOLDER)/lib/libwebrtc-objc.a
+    JNILDFLAGS := -shared
+    SOEXT      := .dylib
+
+    VIDEO_CAPTURE_CXXFLAGS = -fno-rtti -x objective-c++
+else
+    PLATFORM    = linux
+
+    # This covers Sun JVM and OpenJDK
+    INC_DIRS   += -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I/usr/lib/jvm/java/include -I/usr/lib/jvm/java/include/linux
+    CXXFLAGS   += -std=gnu++11 -DWEBRTC_LINUX
+    LDLIBS     += -lrt
+    JNILDFLAGS := -shared -nostdlib -static-libgcc -static-libstdc++ -static
+    SOEXT      := .so
+
+    VIDEO_CAPTURE_CXXFLAGS = -fno-rtti
+endif
+
+LDFLAGS := $(LIB_DIRS) $(LDLIBS) $(JNILDFLAGS)
+
+ifeq ($(DEBUG),1)
+    ifeq ($(shell uname -s),Darwin)
+        CXXFLAGS += -gdwarf-2 -O0 -D_DEBUG $(CXXFLAGS)
+        LDFLAGS  += -gdwarf-2 -O0 -D_DEBUG $(LDFLAGS)
+    else
+        CXXFLAGS += -g -O0 -D_DEBUG $(CXXFLAGS)
+        LDFLAGS  += -g -O0 -D_DEBUG $(LDFLAGS)
+    endif
+else
+    ifeq ($(shell uname -s),Darwin)
+        CXXFLAGS += -gdwarf-2 -O3 -DNDEBUG $(CXXFLAGS)
+        LDFLAGS  += -gdwarf-2 -O3 -DNDEBUG $(LDFLAGS)
+    else
+        CXXFLAGS += -g -O3 -DNDEBUG $(CXXFLAGS)
+        LDFLAGS  += -g -O3 -DNDEBUG $(LDFLAGS)
+    endif
+endif
+
+LIBRARY := $(LIB_DIR)/lib$(ARTIFACT_NAME)-$(ARTIFACT_VERSION)$(SOEXT)
+
+all: $(LIBRARY)
+
+library: clean $(LIBRARY)
+
+$(LIBRARY): $(LIB_DIR) $(OBJ) $(VIDEO_CAPTURE_OBJ)
+	@echo --- Linking $@ ---
+	$(CXX) $(CXXFLAGS) $(OBJ) $(VIDEO_CAPTURE_OBJ) $(LIB_DIRS) $(LDLIBS) $(JNILDFLAGS) -o $@
+
+$(VIDEO_CAPTURE_OBJ): $(VIDEO_CAPTURE_SRC)
+	@echo --- Compiling $< ---
+	$(CXX) $(CXXFLAGS) $(VIDEO_CAPTURE_CXXFLAGS) $(INC_DIRS) -Wno-unused -c $< -o $@
+
+$(OBJ): $(SRC)
+	@echo --- Compiling [auto-generated] $< ---
+	$(CXX) $(CXXFLAGS) $(INC_DIRS) -Wno-unused -c $< -o $@
+
+$(SRC): $(SWIG_FILES)
+	@echo --- SWIG\'ing $(SWIG_FILES) ---
+	@swig $(INC_DIRS) $(SWIGFLAGS) -Wall -java -c++ -outdir $(SRC_DIR) -package com.twilio.sdk.video -o $*.cc $(SWIG_FILES)
+	@sed -i "" -e 's/onDisconnected((twilio::video::Room const \*)arg2,arg3/onDisconnected((twilio::video::Room const \*)arg2,std::move(arg3)/g' $(SRC)    
+
+$(LIB_DIR):
+	@echo  --- Creating output folder for JNI library ---
+	@mkdir -p $@
+
+clean:
+	@echo --- Cleaning everything ---
+	@rm -f  $(LIBRARY)
+	@rm -f  $(SRC_DIR)/*.o
+	@rm -f  $(SRC_DIR)/twilio-video.h
+	@rm -f  $(SRC_DIR)/twilio-video.cc
+	@rm -f  $(SRC_DIR)/*.java
+	@rm -f  $(SRC_DIR)/*.class
