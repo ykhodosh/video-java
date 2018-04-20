@@ -1,9 +1,9 @@
 package com.twilio.sdk.video.app;
 
+import java.io.IOException;
 import java.util.UUID;
 
 import com.twilio.jwt.accesstoken.AccessToken;
-import com.twilio.jwt.accesstoken.Grant;
 import com.twilio.jwt.accesstoken.VideoGrant;
 
 import com.twilio.sdk.video.loader.NativeLoader;
@@ -234,10 +234,11 @@ public class VideoJavaTestApp {
         }
 
         @Override
-        public void onDisconnected(Room room, TwilioError twilio_error) {
-            System.out.println(String.format("Disconnected from room %s, error code = %d",
-                    room.getName(),
-                    twilio_error.getCode().swigValue()));
+        public void onDisconnected(Room room, TwilioError error) {
+            System.out.println(String.format("Room %s disconnected (with%s error)", room.getName(), error == null ? "out" : ""));
+            if (error != null) {
+                System.out.println(String.format("Error code = %d, message = %s", error.getCode(), error.getMessage()));
+            }
         }
 
         @Override
@@ -285,11 +286,14 @@ public class VideoJavaTestApp {
     private static TestRemoteParticipantObserver remoteParticipantObserver;
     private static TestRoomObserver roomObserver;
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws InterruptedException, IOException {
         System.out.println(String.format("Account SID:    %s", System.getProperty("ACCOUNT_SID")));
         System.out.println(String.format("API Key:        %s", System.getProperty("API_KEY")));
         System.out.println(String.format("API Key Secret: %s", System.getProperty("API_KEY_SECRET")));
         System.out.println(String.format("Room Name:      %s", System.getProperty("ROOM_NAME")));
+
+        System.out.println("Press any key to begin ...");
+        System.in.read();
 
         accountSid = System.getProperty("ACCOUNT_SID");
         apiKey = System.getProperty("API_KEY");
@@ -330,5 +334,6 @@ public class VideoJavaTestApp {
         final Room room = video.connect(connectOptions, roomObserver);
         Thread.sleep(10000);
         room.disconnect();
+        Thread.sleep(5000);
     }
 }

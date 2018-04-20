@@ -20,3 +20,12 @@
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+/target/
+
+# SWIG generated Java/C++ files
+src/main/java/com/twilio/sdk/video/*.java
+src/main/java/com/twilio/sdk/video/twilio-video.cc
+src/main/java/com/twilio/sdk/video/twilio-video.h
+
+# object files for JNI library
+*.o

@@ -47,6 +47,13 @@ using namespace twilio::video;
 
 namespace twilio {
 namespace video {
+struct PointerHolder {
+    void *pointer_;
+    PointerHolder(void *pointer) {
+        pointer_ = pointer;
+    }
+};
+
 twilio::video::Room *connect(twilio::video::ConnectOptions options, std::shared_ptr<twilio::video::RoomObserver> observer) {
     std::weak_ptr<twilio::video::RoomObserver> weak_observer(observer);
     return twilio::video::connect(options, weak_observer).release();

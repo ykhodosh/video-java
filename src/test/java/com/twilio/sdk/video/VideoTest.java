@@ -224,10 +224,11 @@ public class VideoTest {
         }
 
         @Override
-        public void onDisconnected(Room room, TwilioError twilio_error) {
-            System.out.println(String.format("Disconnected from room %s, error code = %d",
-                    room.getName(),
-                    twilio_error.getCode().swigValue()));
+        public void onDisconnected(Room room, TwilioError error) {
+            System.out.println(String.format("Room %s disconnected (with%s error)", room.getName(), error == null ? "out" : ""));
+            if (error != null) {
+                System.out.println(String.format("Error code = %d, message = %s", error.getCode(), error.getMessage()));
+            }
         }
 
         @Override
@@ -324,5 +325,6 @@ public class VideoTest {
         final Room room = video.connect(connectOptions, this.roomObserver);
         Thread.sleep(10000);
         room.disconnect();
+        Thread.sleep(5000);
     }
 }

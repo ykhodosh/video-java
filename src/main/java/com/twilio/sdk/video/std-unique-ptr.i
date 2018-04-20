@@ -22,7 +22,9 @@ namespace std {
 
 %define %unique_ptr(Type)
     %typemap(jni) std::unique_ptr<Type> "jlong"
+
     %typemap(jtype) std::unique_ptr<Type> "long"
+
     %typemap(jstype) std::unique_ptr<Type> "$typemap(jstype, Type)"
 
     %typemap(out) std::unique_ptr<Type> %{
@@ -51,12 +53,14 @@ namespace std {
         $1.reset(tmp->release());
     %}
 
-    %typemap(javadirectorin) std::unique_ptr<Type> "new $typemap(jstype, Type)($1,true)";
+    %typemap(javadirectorin) std::unique_ptr<Type> "($1 == 0) ? null : new $typemap(jstype, Type)($1,true)";
+
     %typemap(directorin,descriptor="Lcom/twilio/sdk/video/$typemap(jstype, Type);") std::unique_ptr<Type> %{
         *(Type**)&j$1 = $1.release();
     %}
 
     %typemap(javadirectorout) std::unique_ptr<Type> "$typemap(jstype, Type).getCPtr($javacall)";
+
     %typemap(directorout) std::unique_ptr<Type> %{
         $&1_type tmp = NULL;
         *($&1_type*)&tmp = *($&1_type*)&$input;
@@ -68,5 +72,6 @@ namespace std {
     %}
 
     %template() std::unique_ptr<Type>;
+
     %newobject std::unique_ptr<Type>::release;
 %enddef

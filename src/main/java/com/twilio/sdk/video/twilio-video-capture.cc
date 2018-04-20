@@ -100,26 +100,34 @@ cricket::VideoCapturer *VideoCapturerFactory::CreateVideoCapturer() {
 #ifdef __APPLE__
     capturer = new webrtc::AVFoundationVideoCapturer();
 #else
-    std::unique_ptr<VideoCaptureModule::DeviceInfo> video_device_info(VideoCaptureFactory::CreateDeviceInfo());
-    if (!video_device_info) {
+    std::unique_ptr<webrtc::VideoCaptureModule::DeviceInfo> vdi(webrtc::VideoCaptureFactory::CreateDeviceInfo());
+    if (!vdi) {
         return new FakeVideoCapturer();
+    } else {
+        printf("Successfully instantiated video device info\n");
     }
 
-    if (video_device_info->NumberOfDevices() == 0) {
+    if (vdi->NumberOfDevices() == 0) {
         return new FakeVideoCapturer();
+    } else {
+        printf("Number of video devices: %d\n", vdi->NumberOfDevices());
     }
 
     const uint32_t kSize = 256;
     char name[kSize] = {0};
     char id[kSize] = {0};
-    if (video_device_info->GetDeviceName(0, name, kSize, id, kSize) == -1) {
+    if (vdi->GetDeviceName(0, name, kSize, id, kSize) == -1) {
         return new FakeVideoCapturer();
+    } else {
+        printf("Using device %s with id = %s\n", name, id);
     }
 
     cricket::WebRtcVideoDeviceCapturerFactory factory;
-    capturer = factory.Create(cricket::Device(id, 0));
+    capturer = factory.Create(cricket::Device(name, 0));
     if (capturer == nullptr) {
         return new FakeVideoCapturer();
+    } else {
+        printf("Successfully created platform video capturer\n");
     }
 #endif
 
