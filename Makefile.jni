@@ -99,7 +99,7 @@ else
     INC_DIRS   += -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux -I/usr/lib/jvm/java/include -I/usr/lib/jvm/java/include/linux
     CXXFLAGS   += -std=gnu++11 -DWEBRTC_LINUX -fpermissive -Wno-pedantic -D_GLIBCXX_USE_CXX11_ABI=0
     LDLIBS     += -lrt -lpthread -ldl -lX11
-    JNILDFLAGS := -shared
+    JNILDFLAGS := -shared -z noexecstack
     SOEXT      := .so
 
     VIDEO_CAPTURE_CXXFLAGS = -fno-rtti
@@ -141,8 +141,8 @@ $(SRC): $(SWIG_FILES)
 	@echo --- SWIG\'ing $(SWIG_FILES) ---
 	@swig $(INC_DIRS) $(SWIGFLAGS) -Wall -java -c++ -outdir $(SRC_DIR) -package com.twilio.sdk.video -o $*.cc $(SWIG_FILES)
 	@sed -i "" -e 's/onDisconnected((twilio::video::Room const \*)arg2,arg3/onDisconnected((twilio::video::Room const \*)arg2,std::move(arg3)/g' $(SRC) || true
-	@cp /usr/local/twilio-sdk/webrtc/$(PLATFORM)/$(ARCH_DIR)/lib/libwebrtc.a $(TARGET_DIR)/dependency/twilio-video/$(ARCH_DIR)/$(CVER_DIR)/$(DEPS_DIR)/lib/libwebrtc.a
 ifeq ($(shell uname -s),Darwin)
+	@cp /usr/local/twilio-sdk/webrtc/$(PLATFORM)/$(ARCH_DIR)/lib/libwebrtc.a $(TARGET_DIR)/dependency/twilio-video/$(ARCH_DIR)/$(CVER_DIR)/$(DEPS_DIR)/lib/libwebrtc.a
 	@cp /usr/local/twilio-sdk/webrtc/$(PLATFORM)/$(ARCH_DIR)/lib/libwebrtc-objc.a $(TARGET_DIR)/dependency/twilio-video/$(ARCH_DIR)/$(CVER_DIR)/$(DEPS_DIR)/lib/libwebrtc-objc.a
 endif
 
