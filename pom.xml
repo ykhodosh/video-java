@@ -12,6 +12,8 @@
     <properties>
         <junit.version>4.12</junit.version>
         <twilio-video.version>2.0.0</twilio-video.version>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
     <repositories>
