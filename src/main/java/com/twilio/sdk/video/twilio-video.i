@@ -47,6 +47,18 @@ using namespace twilio::video;
 
 namespace twilio {
 namespace video {
+enum class MediaRegion {
+    US1,
+    US2,
+    IE1,
+    DE1,
+    IN1,
+    BR1,
+    SG1,
+    JP1,
+    AU1
+};
+
 struct PointerHolder {
     void *pointer_;
     PointerHolder(void *pointer) {
@@ -522,6 +534,18 @@ namespace media {
 }
 
 namespace video {
+enum class MediaRegion {
+    US1,
+    US2,
+    IE1,
+    DE1,
+    IN1,
+    BR1,
+    SG1,
+    JP1,
+    AU1
+};
+
 twilio::video::Room *connect(twilio::video::ConnectOptions options, std::shared_ptr<twilio::video::RoomObserver> observer);
 
 %extend LocalParticipant {
