@@ -39,11 +39,12 @@ public class VideoTest {
     public static final String TWILIO_STAGE_ENV = "stage";
     public static final String TWILIO_DEV_ENV = "dev";
 
+    public static final String TWILIO_ENV_NAME = "TWILIO_ENVIRONMENT";
+
     public static final String PROP_ACCOUNT_SID = "ACCOUNT_SID";
     public static final String PROP_API_KEY = "API_KEY";
     public static final String PROP_API_KEY_SECRET = "API_KEY_SECRET";
     public static final String PROP_ROOM_NAME = "ROOM_NAME";
-    public static final String PROP_TWILIO_ENV = "TWILIO_ENV";
     public static final String PROP_MEDIA_REGION = "MEDIA_REGION";
 
     private static final String IDENTITY_PREFIX_ALICE = "alice-";
@@ -342,7 +343,7 @@ public class VideoTest {
         this.apiKeySecret = System.getProperty(PROP_API_KEY_SECRET);
         this.room = System.getProperty(PROP_ROOM_NAME);
 
-        final String env = System.getProperty(PROP_TWILIO_ENV);
+        final String env = System.getenv(TWILIO_ENV_NAME);
         if (env != null && !env.isEmpty()) {
             if (env.equalsIgnoreCase("staging") || env.equalsIgnoreCase("stage")) {
                 this.environment = TWILIO_STAGE_ENV;
@@ -374,7 +375,6 @@ public class VideoTest {
         System.out.println(String.format("Account SID:    %s", this.account));
         System.out.println(String.format("API Key:        %s", this.apiKey));
         System.out.println(String.format("API Key Secret: %s", this.apiKeySecret));
-        System.out.println(String.format("Environment:    %s", this.environment));
         System.out.println(String.format("Media Region:   %s", this.mediaRegion));
         System.out.println(String.format("Room Name:      %s", this.room));
 
@@ -596,6 +596,8 @@ public class VideoTest {
     }
 
     protected boolean completeRoom(final String room) {
+        assertNotNull(room);
+
         final com.twilio.rest.video.v1.Room restRoom = new RoomUpdater(room, COMPLETED).update(getTwilioRestClient());
         System.out.println(String.format("ROOM: %s", restRoom.toString()));
         return restRoom.getStatus() == COMPLETED;

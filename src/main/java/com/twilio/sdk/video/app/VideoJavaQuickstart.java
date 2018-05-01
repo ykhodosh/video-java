@@ -32,7 +32,7 @@ import com.twilio.sdk.video.VideoFrame;
 import com.twilio.sdk.video.VideoSinkForVideoFrame;
 import com.twilio.sdk.video.video;
 
-public class VideoJavaTestApp {
+public class VideoJavaQuickstart {
     static {
         NativeLoader.loadNativeLibraries();
     }

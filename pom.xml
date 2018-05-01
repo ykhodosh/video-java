@@ -144,7 +144,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.twilio.sdk.video.app.VideoJavaTestApp</mainClass>
+                            <mainClass>com.twilio.sdk.video.app.VideoJavaQuickstart</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

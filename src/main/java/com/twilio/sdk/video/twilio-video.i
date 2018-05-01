@@ -269,6 +269,23 @@ twilio::video::Room *connect(twilio::video::ConnectOptions options, std::shared_
 %include "enums.swg"
 %javaconst(1);
 
+// wrap VideoFrameBuffer data in java.nio.ByteBuffer
+%typemap(jni) const unsigned char* "jobject"
+%typemap(jtype) const unsigned char* "java.nio.ByteBuffer"
+%typemap(jstype) const unsigned char* "java.nio.ByteBuffer"
+
+%typemap(out) const unsigned char* {
+#ifdef __cplusplus
+  $result = jenv->NewDirectByteBuffer($1, 1000);
+#else
+  $result = NewDirectByteBuffer(jenv, $1, 1000);
+#endif
+}
+
+%typemap(javaout) const unsigned char * {
+  return $jnicall;
+}
+
 // rtc::scoped_refptr instantiations
 %include "rtc-scoped-refptr.i"
 %template(VideoFrameBufferRef) rtc::scoped_refptr<webrtc::VideoFrameBuffer>;
