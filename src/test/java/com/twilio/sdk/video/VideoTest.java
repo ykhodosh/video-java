@@ -1,5 +1,6 @@
 package com.twilio.sdk.video;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -17,6 +18,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
 import com.twilio.http.TwilioRestClient;
@@ -24,6 +26,7 @@ import com.twilio.jwt.accesstoken.AccessToken;
 import com.twilio.jwt.accesstoken.VideoGrant;
 import com.twilio.rest.video.v1.RoomCreator;
 import com.twilio.rest.video.v1.RoomUpdater;
+import com.twilio.sdk.video.Room.State;
 import com.twilio.sdk.video.loader.NativeLoader;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -246,10 +249,32 @@ public class VideoTest {
     }
 
     private static class TestRoomObserver extends RoomObserver {
-        private RemoteParticipantObserver observer;
+        final private RemoteParticipantObserver observer;
+        final private CompletableFuture<Room> connected;
+        final private CompletableFuture<Void> disconnected;
+
+        volatile private boolean isConnected;
 
         public TestRoomObserver(final RemoteParticipantObserver observer) {
             this.observer = observer;
+            this.connected = new CompletableFuture<>();
+            this.disconnected = new CompletableFuture<>();
+
+            this.isConnected = false;
+        }
+
+        public boolean isConnected() {
+            return this.isConnected;
+        }
+
+        public Room waitForRoomConnect(final long time, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+            System.out.println("Waiting for room to become connected ...");
+            return this.connected.get(time, unit);
+        }
+
+        public void waitForRoomDisconnect(final long time, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+            System.out.println("Waiting for room to become disconnected ...");
+            this.disconnected.get(time, unit);
         }
 
         @Override
@@ -257,11 +282,14 @@ public class VideoTest {
             System.out.println(String.format("Connected to room %s with SID %s", room.getName(), room.getSid()));
             System.out.println(String.format("PARTICIPANTS IN THE ROOM: %d", room.getRemoteParticipants().size()));
 
-            final StringVector identities = room.getRemoteParticipants().keys();
-            for (int index = 0; index < identities.size(); index++) {
-                System.out.println(String.format("Adding observer for participant %s", identities.get(index)));
+            this.isConnected = true;
+            this.connected.complete(room);
 
-                final RemoteParticipant participant = room.getRemoteParticipants().get(identities.get(index));
+            final List<String> identities = room.getRemoteParticipants().keys();
+            for (final String identity: identities) {
+                System.out.println(String.format("Adding observer for participant %s", identity));
+
+                final RemoteParticipant participant = room.getRemoteParticipants().get(identity);
                 participant.setObserver(this.observer);
             }
         }
@@ -269,16 +297,27 @@ public class VideoTest {
         @Override
         public void onDisconnected(Room room, TwilioError error) {
             System.out.println(String.format("Room %s disconnected (with%s error)", room.getName(), error == null ? "out" : ""));
+            
+            this.isConnected = false;
+
             if (error != null) {
-                System.out.println(String.format("Error code = %d, message = %s", error.getCode(), error.getMessage()));
+                System.out.println(String.format("Error code = %d, message = %s",
+                        error.getCode().swigValue(),
+                        error.getMessage()));
+
+                this.disconnected.completeExceptionally(new RuntimeException(error.getMessage()));
+            } else {
+                this.disconnected.complete(null);
             }
         }
 
         @Override
-        public void onConnectFailure(Room room, TwilioError twilio_error) {
+        public void onConnectFailure(Room room, TwilioError error) {
             System.out.println(String.format("Failed to connect to room %s, error code = %d",
                     room.getName(),
-                    twilio_error.getCode().swigValue()));
+                    error.getCode().swigValue()));
+
+            this.connected.completeExceptionally(new RuntimeException(error.getMessage()));
         }
 
         @Override
@@ -325,7 +364,8 @@ public class VideoTest {
     private String tokenBob;
 
     private TestRemoteParticipantObserver remoteParticipantObserver;
-    private TestRoomObserver roomObserver;
+    private TestRoomObserver roomObserverAlice;
+    private TestRoomObserver roomObserverBob;
 
     private MediaFactory mfAlice = null;
     private MediaFactory mfBob = null;
@@ -379,97 +419,149 @@ public class VideoTest {
         System.out.println(String.format("Room Name:      %s", this.room));
 
         this.remoteParticipantObserver = new TestRemoteParticipantObserver();
-        this.roomObserver = new TestRoomObserver(this.remoteParticipantObserver);
     }
 
     @After
     public void teardown() {
+        this.roomObserverAlice = null;
+        this.roomObserverBob = null;
+
         this.audioTrackBob = null;
         this.videoTrackBob = null;
         this.audioTrackAlice = null;
         this.videoTrackBob = null;
+
         this.mfBob = null;
         this.mfAlice = null;
     }
 
     @Test
-    public void testOneParticipantConnectToP2PRoom() throws InterruptedException {
+    public void testCodecVectors() {
+        setupIdentityAlice();
+        this.mfAlice = MediaFactory.create(new MediaOptions());
+        final ConnectOptions connectOptions1 = getConnectOptions(this.tokenAlice, this.room, this.mfAlice, null, null, null);
+        final List<AudioCodec> audioCodecs = connectOptions1.getPreferredAudioCodecs();
+        assertTrue(audioCodecs.isEmpty());
+        final ConnectOptions connectOptions2 = getConnectOptions(this.tokenAlice,
+                this.room,
+                this.mfAlice,
+                ImmutableList.of(new H264Codec(), new Vp8Codec(), new Vp9Codec()),
+                null,
+                null);
+        final List<VideoCodec> videoCodecs = connectOptions2.getPreferredVideoCodecs();
+        assertFalse(videoCodecs.isEmpty());
+        assertEquals(videoCodecs.size(), 3);
+        assertEquals(videoCodecs.get(0).getName(), "H264");
+        assertEquals(videoCodecs.get(1).getName(), "VP8");
+        assertEquals(videoCodecs.get(2).getName(), "VP9");
+    }
+
+    @Test
+    public void testOneParticipantConnectToP2PRoom() throws InterruptedException, ExecutionException, TimeoutException {
         if (checkForAccountInfo()) {
             assertTrue(createRoom(this.room, null, null, PEER_TO_PEER, null));
             setupIdentityAlice();
             final Room roomAlice = connectAlice(null);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kConnected);
+            Thread.sleep(13000);
             roomAlice.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverAlice.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kDisconnected);
             assertTrue(completeRoom(this.room));
         }
     }
 
     @Test
-    public void testTwoParticipantConnectToP2PRoom() throws InterruptedException {
+    public void testTwoParticipantConnectToP2PRoom() throws InterruptedException, ExecutionException, TimeoutException {
         if (checkForAccountInfo()) {
             assertTrue(createRoom(this.room, null, null, PEER_TO_PEER, null));
             setupIdentityAlice();
             final Room roomAlice = connectAlice(null);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kConnected);
             setupIdentityBob();
             final Room roomBob = connectBob(null);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverBob.isConnected());
+            assertEquals(roomBob.getState(), State.kConnected);
+            Thread.sleep(13000);
             roomBob.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverBob.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverBob.isConnected());
+            assertEquals(roomBob.getState(), State.kDisconnected);
             roomAlice.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverAlice.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kDisconnected);
             assertTrue(completeRoom(this.room));
         }
     }
 
     @Test
-    public void testOneParticipantConnectToGroupRoom() throws InterruptedException {
+    public void testOneParticipantConnectToGroupRoom() throws InterruptedException, ExecutionException, TimeoutException {
         if (checkForAccountInfo()) {
             assertTrue(createRoom(this.room, this.mediaRegion, null, GROUP, Lists.newArrayList(VP8, H264)));
             setupIdentityAlice();
             final Room roomAlice = connectAlice(null);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kConnected);
+            Thread.sleep(13000);
             roomAlice.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverAlice.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kDisconnected);
             assertTrue(completeRoom(this.room));
         }
     }
 
     @Test
-    public void testTwoParticipantsConnectToGroupRoom() throws InterruptedException {
+    public void testTwoParticipantsConnectToGroupRoom() throws InterruptedException, ExecutionException, TimeoutException {
         if (checkForAccountInfo()) {
             assertTrue(createRoom(this.room, this.mediaRegion, null, GROUP, Lists.newArrayList(VP8, H264)));
             setupIdentityAlice();
             final Room roomAlice = connectAlice(null);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kConnected);
             setupIdentityBob();
             final Room roomBob = connectBob(null);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverBob.isConnected());
+            assertEquals(roomBob.getState(), State.kConnected);
+            Thread.sleep(13000);
             roomBob.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverBob.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverBob.isConnected());
+            assertEquals(roomBob.getState(), State.kDisconnected);
             roomAlice.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverAlice.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kDisconnected);
             assertTrue(completeRoom(this.room));
         }
     }
 
     @Test
-    public void testTwoParticipantsConnectToGroupRoomWithUnsupportedCodec() throws InterruptedException {
+    public void testTwoParticipantsConnectToGroupRoomWithUnsupportedCodec() throws InterruptedException, ExecutionException, TimeoutException {
         if (checkForAccountInfo()) {
             assertTrue(createRoom(this.room, this.mediaRegion, null, GROUP, Lists.newArrayList(H264)));
             setupIdentityAlice();
-            final VideoCodecVector preferredVCodecs = new VideoCodecVector();
-            preferredVCodecs.add(new H264Codec());
+            final List<VideoCodec> preferredVCodecs = ImmutableList.of(new H264Codec());
             final Room roomAlice = connectAlice(preferredVCodecs);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kConnected);
             setupIdentityBob();
             final Room roomBob = connectBob(preferredVCodecs);
-            Thread.sleep(23000);
+            assertTrue(this.roomObserverBob.isConnected());
+            assertEquals(roomBob.getState(), State.kConnected);
+            Thread.sleep(13000);
             roomBob.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverBob.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverBob.isConnected());
+            assertEquals(roomBob.getState(), State.kDisconnected);
             roomAlice.disconnect();
-            Thread.sleep(23000);
+            this.roomObserverAlice.waitForRoomDisconnect(10, TimeUnit.SECONDS);
+            assertFalse(this.roomObserverAlice.isConnected());
+            assertEquals(roomAlice.getState(), State.kDisconnected);
             assertTrue(completeRoom(this.room));
         }
     }
@@ -505,9 +597,9 @@ public class VideoTest {
     protected ConnectOptions getConnectOptions(final String token,
             final String room,
             final MediaFactory mf,
-            final VideoCodecVector preferredVCodecs,
-            final LocalAudioTrackVector audioTracks,
-            final LocalVideoTrackVector videoTracks) {
+            final List<VideoCodec> preferredVCodecs,
+            final List<LocalAudioTrack> audioTracks,
+            final List<LocalVideoTrack> videoTracks) {
         assertNotNull(token);
         assertNotNull(room);
         assertNotNull(mf);
@@ -529,34 +621,36 @@ public class VideoTest {
         return builder.build();
     }
 
-    protected Room connectAlice(final VideoCodecVector preferredVCodecs) {
+    protected Room connectAlice(final List<VideoCodec> preferredVCodecs) throws InterruptedException, ExecutionException, TimeoutException {
         this.mfAlice = MediaFactory.create(new MediaOptions());
         this.videoTrackAlice = this.mfAlice.createVideoTrack(false, MediaConstraints.defaultVideoConstraints());
         this.audioTrackAlice = this.mfAlice.createAudioTrack(new AudioTrackOptions(true));
 
-        final LocalAudioTrackVector audioTracks = new LocalAudioTrackVector();
-        audioTracks.add(this.audioTrackAlice);
-
-        final LocalVideoTrackVector videoTracks = new LocalVideoTrackVector();
-        videoTracks.add(this.videoTrackAlice);
-
-        return video.connect(getConnectOptions(this.tokenAlice, this.room, this.mfAlice, preferredVCodecs, audioTracks, videoTracks),
-                this.roomObserver);
+        this.roomObserverAlice = new TestRoomObserver(this.remoteParticipantObserver);
+        video.connect(getConnectOptions(this.tokenAlice,
+                        this.room,
+                        this.mfAlice,
+                        preferredVCodecs,
+                        Lists.newArrayList(this.audioTrackAlice),
+                        Lists.newArrayList(this.videoTrackAlice)),
+                this.roomObserverAlice);
+        return this.roomObserverAlice.waitForRoomConnect(10, TimeUnit.SECONDS);
     }
 
-    protected Room connectBob(final VideoCodecVector preferredVCodecs) {
+    protected Room connectBob(final List<VideoCodec> preferredVCodecs) throws InterruptedException, ExecutionException, TimeoutException {
         this.mfBob = MediaFactory.create(new MediaOptions());
         this.videoTrackBob = this.mfBob.createVideoTrack(false, MediaConstraints.defaultVideoConstraints());
         this.audioTrackBob = this.mfBob.createAudioTrack(new AudioTrackOptions(true));
 
-        final LocalAudioTrackVector audioTracks = new LocalAudioTrackVector();
-        audioTracks.add(this.audioTrackBob);
-
-        final LocalVideoTrackVector videoTracks = new LocalVideoTrackVector();
-        videoTracks.add(this.videoTrackBob);
-
-        return video.connect(getConnectOptions(this.tokenBob, this.room, mfBob, preferredVCodecs, audioTracks, videoTracks),
-                this.roomObserver);
+        this.roomObserverBob = new TestRoomObserver(this.remoteParticipantObserver);
+        video.connect(getConnectOptions(this.tokenBob,
+                        this.room,
+                        mfBob,
+                        preferredVCodecs,
+                        Lists.newArrayList(this.audioTrackBob),
+                        Lists.newArrayList(this.videoTrackBob)),
+                this.roomObserverBob);
+        return this.roomObserverBob.waitForRoomConnect(10, TimeUnit.SECONDS);
     }
 
     protected TwilioRestClient getTwilioRestClient() {

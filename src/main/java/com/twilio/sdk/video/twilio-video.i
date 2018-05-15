@@ -154,6 +154,9 @@ twilio::video::Room *connect(twilio::video::ConnectOptions options, std::shared_
 %ignore twilio::media::MediaFactory::getWorkerThread() const;
 %ignore twilio::media::MediaFactory::getSignalingThread() const;
 
+// replace automatically generated accessors for IceServer::urls with custom ones
+%ignore twilio::media::IceServer::urls;
+
 // do not generate setters for the following fields
 %immutable twilio::video::StatsReport::peer_connection_id;
 %immutable twilio::video::StatsReport::local_audio_track_stats;
@@ -258,6 +261,27 @@ twilio::video::Room *connect(twilio::video::ConnectOptions options, std::shared_
 // use value wrappers for classes with no default/copy c-tor
 %feature("valuewrapper") twilio::media::DataTrackOptions;
 %feature("valuewrapper") twilio::video::TwilioError;
+
+// custom std::vector wrappers
+%include twilio-custom-vectors.i
+%shared_ptr_vector_as_immutable_list(twilio::media::AudioCodec, AudioCodec)
+%shared_ptr_vector_as_immutable_list(twilio::media::VideoCodec, VideoCodec)
+
+%shared_ptr_vector_as_immutable_list(twilio::media::LocalDataTrack, LocalDataTrack)
+%shared_ptr_vector_as_immutable_list(twilio::media::LocalAudioTrack, LocalAudioTrack)
+%shared_ptr_vector_as_immutable_list(twilio::media::LocalVideoTrack, LocalVideoTrack)
+
+%shared_ptr_vector_as_immutable_list(twilio::media::AudioTrackPublication, AudioTrackPublication)
+%shared_ptr_vector_as_immutable_list(twilio::media::LocalAudioTrackPublication, LocalAudioTrackPublication)
+%shared_ptr_vector_as_immutable_list(twilio::media::RemoteAudioTrackPublication, RemoteAudioTrackPublication)
+
+%shared_ptr_vector_as_immutable_list(twilio::media::VideoTrackPublication, VideoTrackPublication)
+%shared_ptr_vector_as_immutable_list(twilio::media::LocalVideoTrackPublication, LocalVideoTrackPublication)
+%shared_ptr_vector_as_immutable_list(twilio::media::RemoteVideoTrackPublication, RemoteVideoTrackPublication)
+
+%shared_ptr_vector_as_immutable_list(twilio::media::DataTrackPublication, DataTrackPublication)
+%shared_ptr_vector_as_immutable_list(twilio::media::LocalDataTrackPublication, LocalDataTrackPublication)
+%shared_ptr_vector_as_immutable_list(twilio::media::RemoteDataTrackPublication, RemoteDataTrackPublication)
 
 // typemaps for various int types
 %include "stdint.i"
@@ -377,35 +401,16 @@ namespace std {
 
 %template(StatsReportVector) vector<twilio::video::StatsReport>;
 
-%template(AudioCodecVector) vector<std::shared_ptr<twilio::media::AudioCodec>>;
-%template(VideoCodecVector) vector<std::shared_ptr<twilio::media::VideoCodec>>;
-
-%template(LocalDataTrackVector) vector<std::shared_ptr<twilio::media::LocalDataTrack>>;
-%template(LocalAudioTrackVector) vector<std::shared_ptr<twilio::media::LocalAudioTrack>>;
-%template(LocalVideoTrackVector) vector<std::shared_ptr<twilio::media::LocalVideoTrack>>;
-
 %template(IceServerVector) vector<twilio::media::IceServer>;
-
-%template(StringVector) vector<std::string>;
-
-%template(DataTrackPublicationVector) vector<std::shared_ptr<twilio::media::DataTrackPublication>>;
-%template(AudioTrackPublicationVector) vector<std::shared_ptr<twilio::media::AudioTrackPublication>>;
-%template(VideoTrackPublicationVector) vector<std::shared_ptr<twilio::media::VideoTrackPublication>>;
-%template(LocalDataTrackPublicationVector) vector<std::shared_ptr<twilio::media::LocalDataTrackPublication>>;
-%template(LocalAudioTrackPublicationVector) vector<std::shared_ptr<twilio::media::LocalAudioTrackPublication>>;
-%template(LocalVideoTrackPublicationVector) vector<std::shared_ptr<twilio::media::LocalVideoTrackPublication>>;
-%template(RemoteDataTrackPublicationVector) vector<std::shared_ptr<twilio::media::RemoteDataTrackPublication>>;
-%template(RemoteAudioTrackPublicationVector) vector<std::shared_ptr<twilio::media::RemoteAudioTrackPublication>>;
-%template(RemoteVideoTrackPublicationVector) vector<std::shared_ptr<twilio::media::RemoteVideoTrackPublication>>;
 }
 
 // map template for remote participants and custom extenstion
 %include "std_map.i"
 %extend std::map<std::string, std::shared_ptr<twilio::video::RemoteParticipant>> {
-      std::vector<std::string> *keys() {
-          std::vector<std::string> *keys = new std::vector<std::string>();
+      std::vector<std::string> keys() {
+          std::vector<std::string> keys;
           for (auto entry : *$self) {
-              keys->push_back(entry.first);
+              keys.push_back(entry.first);
           }
           return keys;
       }
@@ -507,6 +512,16 @@ namespace webrtc {
 
 namespace twilio {
 namespace media {
+%extend IceServer {
+    void setUrls(std::vector<std::string> urls) {
+        $self->urls = urls;
+    }
+
+    std::vector<std::string> getUrls() {
+        return $self->urls;
+    }
+};
+
 %extend RemoteDataTrack {
     void setObserver(std::shared_ptr<twilio::media::RemoteDataTrackObserver> observer) {
         std::weak_ptr<twilio::media::RemoteDataTrackObserver> weak_observer(observer);

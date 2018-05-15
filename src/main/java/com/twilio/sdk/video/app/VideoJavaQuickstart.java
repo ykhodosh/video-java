@@ -1,18 +1,19 @@
 package com.twilio.sdk.video.app;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
+import com.google.common.collect.Lists;
 import com.twilio.jwt.accesstoken.AccessToken;
 import com.twilio.jwt.accesstoken.VideoGrant;
 
 import com.twilio.sdk.video.loader.NativeLoader;
 import com.twilio.sdk.video.AudioTrackOptions;
 import com.twilio.sdk.video.ConnectOptions;
+import com.twilio.sdk.video.H264Codec;
 import com.twilio.sdk.video.LocalAudioTrack;
-import com.twilio.sdk.video.LocalAudioTrackVector;
 import com.twilio.sdk.video.LocalVideoTrack;
-import com.twilio.sdk.video.LocalVideoTrackVector;
 import com.twilio.sdk.video.MediaConstraints;
 import com.twilio.sdk.video.MediaFactory;
 import com.twilio.sdk.video.MediaOptions;
@@ -26,7 +27,6 @@ import com.twilio.sdk.video.RemoteVideoTrack;
 import com.twilio.sdk.video.RemoteVideoTrackPublication;
 import com.twilio.sdk.video.Room;
 import com.twilio.sdk.video.RoomObserver;
-import com.twilio.sdk.video.StringVector;
 import com.twilio.sdk.video.TwilioError;
 import com.twilio.sdk.video.VideoFrame;
 import com.twilio.sdk.video.VideoSinkForVideoFrame;
@@ -225,10 +225,10 @@ public class VideoJavaQuickstart {
         public void onConnected(Room room) {
             System.out.println(String.format("Connected to room: %s", room.getName()));
             System.out.println(String.format("PARTICIPANTS IN THE ROOM: %d", room.getRemoteParticipants().size()));
-            final StringVector identities = room.getRemoteParticipants().keys();
-            for (int index = 0; index < identities.size(); index++) {
-                System.out.println(String.format("Adding observer for participant %s", identities.get(index)));
-                final RemoteParticipant participant = room.getRemoteParticipants().get(identities.get(index));
+            final List<String> identities = room.getRemoteParticipants().keys();
+            for (final String identity: identities) {
+                System.out.println(String.format("Adding observer for participant %s", identity));
+                final RemoteParticipant participant = room.getRemoteParticipants().get(identity);
                 participant.setObserver(this.observer);
             }
         }
@@ -319,17 +319,12 @@ public class VideoJavaQuickstart {
         final LocalVideoTrack videoTrack = mediaFactory.createVideoTrack(false, MediaConstraints.defaultVideoConstraints());
         final LocalAudioTrack audioTrack = mediaFactory.createAudioTrack(new AudioTrackOptions(true));
 
-        final LocalAudioTrackVector audioTracks = new LocalAudioTrackVector();
-        audioTracks.add(audioTrack);
-
-        final LocalVideoTrackVector videoTracks = new LocalVideoTrackVector();
-        videoTracks.add(videoTrack);
-
         final ConnectOptions connectOptions = new ConnectOptions.Builder(token)
                 .setRoomName(roomName)
                 .setMediaFactory(mediaFactory)
-                .setAudioTracks(audioTracks)
-                .setVideoTracks(videoTracks).build();
+                .setPreferredVideoCodecs(Lists.newArrayList(new H264Codec()))
+                .setAudioTracks(Lists.newArrayList(audioTrack))
+                .setVideoTracks(Lists.newArrayList(videoTrack)).build();
 
         final Room room = video.connect(connectOptions, roomObserver);
         Thread.sleep(10000);
