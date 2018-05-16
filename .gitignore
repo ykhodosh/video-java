@@ -29,3 +29,9 @@ src/main/java/com/twilio/sdk/video/twilio-video.h
 
 # object files for JNI library
 *.o
+
+# Eclipse project files
+.classpath
+.project
+.settings
+

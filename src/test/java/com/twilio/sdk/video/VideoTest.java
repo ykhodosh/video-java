@@ -18,6 +18,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
@@ -53,6 +56,8 @@ public class VideoTest {
     private static final String IDENTITY_PREFIX_ALICE = "alice-";
     private static final String IDENTITY_PREFIX_BOB = "bob-";
 
+    private static final Logger LOG = LoggerFactory.getLogger(VideoTest.class);
+
     static {
         NativeLoader.loadNativeLibraries();
     }
@@ -66,7 +71,7 @@ public class VideoTest {
 
         public void OnFrame(VideoFrame videoFrame) {
             if (++this.frameCount % 30 == 0) {
-                System.out.println("FRAMES RECEIVED: " + this.frameCount);
+                LOG.info("FRAMES RECEIVED: {}", this.frameCount);
             }
         }
     }
@@ -81,96 +86,74 @@ public class VideoTest {
 
         @Override
         public void onAudioTrackPublished(RemoteParticipant participant, RemoteAudioTrackPublication publication) {
-            System.out.println(String.format("Participant %s published audio track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} published audio track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onAudioTrackUnpublished(RemoteParticipant participant, RemoteAudioTrackPublication publication) {
-            System.out.println(String.format("Participant %s unpublished audio track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} unpublished audio track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onAudioTrackEnabled(RemoteParticipant participant, RemoteAudioTrackPublication publication) {
-            System.out.println(String.format("Participant %s enabled audio track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} enabled audio track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onAudioTrackDisabled(RemoteParticipant participant, RemoteAudioTrackPublication publication) {
-            System.out.println(String.format("Participant %s disabled audio track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} disabled audio track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onAudioTrackSubscribed(RemoteParticipant participant,
                 RemoteAudioTrackPublication publication,
                 RemoteAudioTrack track) {
-            System.out.println(String.format("Subscribed to audio track %s of participant %s",
-                    publication.getTrackSid(),
-                    participant.getIdentity()));
+            LOG.info("Subscribed to audio track {} of participant {}", publication.getTrackSid(), participant.getIdentity());
         }
 
         @Override
         public void onAudioTrackSubscriptionFailed(RemoteParticipant participant,
                 RemoteAudioTrackPublication publication,
                 TwilioError twilio_error) {
-            System.out.println(String.format("Failed to subscribe to audio track %s of participant %s; error = %d, message = %s",
+            LOG.info("Failed to subscribe to audio track {} of participant {}; error = {}, message = {}",
                     publication.getTrackSid(),
                     participant.getIdentity(),
                     twilio_error.getCode().swigValue(),
-                    twilio_error.getMessage()));
+                    twilio_error.getMessage());
         }
 
         @Override
         public void onAudioTrackUnsubscribed(RemoteParticipant participant,
                 RemoteAudioTrackPublication publication,
                 RemoteAudioTrack track) {
-            System.out.println(String.format("Unsubscribed from audio track %s of participant %s",
-                    publication.getTrackSid(),
-                    participant.getIdentity()));
+            LOG.info("Unsubscribed from audio track {} of participant {}", publication.getTrackSid(), participant.getIdentity());
         }
 
         @Override
         public void onVideoTrackPublished(RemoteParticipant participant, RemoteVideoTrackPublication publication) {
-            System.out.println(String.format("Participant %s published video track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} published video track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onVideoTrackUnpublished(RemoteParticipant participant, RemoteVideoTrackPublication publication) {
-            System.out.println(String.format("Participant %s unpublished video track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} unpublished video track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onVideoTrackEnabled(RemoteParticipant participant, RemoteVideoTrackPublication publication) {
-            System.out.println(String.format("Participant %s enabled video track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} enabled video track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onVideoTrackDisabled(RemoteParticipant participant, RemoteVideoTrackPublication publication) {
-            System.out.println(String.format("Participant %s disabled video track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} disabled video track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onVideoTrackSubscribed(RemoteParticipant participant,
                 RemoteVideoTrackPublication publication,
                 RemoteVideoTrack track) {
-            System.out.println(String.format("Subscribed to video track %s of participant %s",
-                    publication.getTrackSid(),
-                    participant.getIdentity()));
+            LOG.info("Subscribed to video track {} of participant {}", publication.getTrackSid(), participant.getIdentity());
 
             final VideoSinkForVideoFrame videoTrackObserver = new TestSinkForVideoFrame();
             this.videoTrackObservers.put(publication.getTrackSid(), videoTrackObserver);
@@ -186,66 +169,56 @@ public class VideoTest {
         public void onVideoTrackSubscriptionFailed(RemoteParticipant participant,
                 RemoteVideoTrackPublication publication,
                 TwilioError twilio_error) {
-            System.out.println(String.format("Failed to subscribe to video track %s of participant %s; error = %d, message = %s",
+            LOG.info("Failed to subscribe to video track {} of participant {}; error = {}, message = {}",
                     publication.getTrackSid(),
                     participant.getIdentity(),
                     twilio_error.getCode().swigValue(),
-                    twilio_error.getMessage()));
+                    twilio_error.getMessage());
         }
 
         @Override
         public void onVideoTrackUnsubscribed(RemoteParticipant participant,
                 RemoteVideoTrackPublication publication,
                 RemoteVideoTrack track) {
-            System.out.println(String.format("Unsubscribed from video track %s of participant %s",
-                    publication.getTrackSid(),
-                    participant.getIdentity()));
+            LOG.info("Unsubscribed from video track {} of participant {}", publication.getTrackSid(), participant.getIdentity());
 
             track.getWebRtcTrack().RemoveSink(this.videoTrackObservers.get(publication.getTrackSid()));
         }
 
         @Override
         public void onDataTrackPublished(RemoteParticipant participant, RemoteDataTrackPublication publication) {
-            System.out.println(String.format("Participant %s published data track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} published data track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onDataTrackUnpublished(RemoteParticipant participant, RemoteDataTrackPublication publication) {
-            System.out.println(String.format("Participant %s unpublished data track %s",
-                    participant.getIdentity(),
-                    publication.getTrackSid()));
+            LOG.info("Participant {} unpublished data track {}", participant.getIdentity(), publication.getTrackSid());
         }
 
         @Override
         public void onDataTrackSubscribed(RemoteParticipant participant,
                 RemoteDataTrackPublication publication,
                 RemoteDataTrack track) {
-            System.out.println(String.format("Subscribed to data track %s of participant %s",
-                    publication.getTrackSid(),
-                    participant.getIdentity()));
+            LOG.info("Subscribed to data track {} of participant {}", publication.getTrackSid(), participant.getIdentity());
         }
 
         @Override
         public void onDataTrackSubscriptionFailed(RemoteParticipant participant,
                 RemoteDataTrackPublication publication,
                 TwilioError twilio_error) {
-            System.out.println(String.format("Failed to subscribe to data track %s of participant %s; error = %d, message = %s",
+            LOG.info("Failed to subscribe to data track {} of participant {}; error = {}, message = {}",
                     publication.getTrackSid(),
                     participant.getIdentity(),
                     twilio_error.getCode().swigValue(),
-                    twilio_error.getMessage()));
+                    twilio_error.getMessage());
         }
 
         @Override
         public void onDataTrackUnsubscribed(RemoteParticipant participant,
                 RemoteDataTrackPublication publication,
                 RemoteDataTrack track) {
-            System.out.println(String.format("Unsubscribed from data track %s of participant %s",
-                    publication.getTrackSid(),
-                    participant.getIdentity()));
-        }        
+            LOG.info("Unsubscribed from data track {} of participant {}", publication.getTrackSid(), participant.getIdentity());
+        }
     }
 
     private static class TestRoomObserver extends RoomObserver {
@@ -268,26 +241,26 @@ public class VideoTest {
         }
 
         public Room waitForRoomConnect(final long time, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            System.out.println("Waiting for room to become connected ...");
+            LOG.info("Waiting for room to become connected ...");
             return this.connected.get(time, unit);
         }
 
         public void waitForRoomDisconnect(final long time, final TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-            System.out.println("Waiting for room to become disconnected ...");
+            LOG.info("Waiting for room to become disconnected ...");
             this.disconnected.get(time, unit);
         }
 
         @Override
         public void onConnected(Room room) {
-            System.out.println(String.format("Connected to room %s with SID %s", room.getName(), room.getSid()));
-            System.out.println(String.format("PARTICIPANTS IN THE ROOM: %d", room.getRemoteParticipants().size()));
+            LOG.info("Connected to room {} with SID {}", room.getName(), room.getSid());
+            LOG.info("Number of participants in the room: {}", room.getRemoteParticipants().size());
 
             this.isConnected = true;
             this.connected.complete(room);
 
             final List<String> identities = room.getRemoteParticipants().keys();
             for (final String identity: identities) {
-                System.out.println(String.format("Adding observer for participant %s", identity));
+                LOG.info("Adding observer for participant {}", identity);
 
                 final RemoteParticipant participant = room.getRemoteParticipants().get(identity);
                 participant.setObserver(this.observer);
@@ -296,14 +269,12 @@ public class VideoTest {
 
         @Override
         public void onDisconnected(Room room, TwilioError error) {
-            System.out.println(String.format("Room %s disconnected (with%s error)", room.getName(), error == null ? "out" : ""));
+            LOG.info("Room {} disconnected (with{} error)", room.getName(), error == null ? "out" : "");
             
             this.isConnected = false;
 
             if (error != null) {
-                System.out.println(String.format("Error code = %d, message = %s",
-                        error.getCode().swigValue(),
-                        error.getMessage()));
+                LOG.info("Error code = {}, message = {}", error.getCode().swigValue(), error.getMessage());
 
                 this.disconnected.completeExceptionally(new RuntimeException(error.getMessage()));
             } else {
@@ -313,39 +284,33 @@ public class VideoTest {
 
         @Override
         public void onConnectFailure(Room room, TwilioError error) {
-            System.out.println(String.format("Failed to connect to room %s, error code = %d",
-                    room.getName(),
-                    error.getCode().swigValue()));
+            LOG.info("Failed to connect to room {}, error code = {}", room.getName(), error.getCode().swigValue());
 
             this.connected.completeExceptionally(new RuntimeException(error.getMessage()));
         }
 
         @Override
         public void onParticipantConnected(Room room, RemoteParticipant participant) {
-            System.out.println(String.format("Particpant %s connected to room %s, adding observer ...",
-                    participant.getIdentity(),
-                    room.getName()));
+            LOG.info("Particpant {} connected to room {}, adding observer ...", participant.getIdentity(), room.getName());
 
             participant.setObserver(this.observer);
         }
 
         @Override
         public void onParticipantDisconnected(Room room, RemoteParticipant participant) {
-            System.out.println(String.format("Particpant %s disconnected from room %s, removing observer ...",
-                    participant.getIdentity(),
-                    room.getName()));
+            LOG.info("Particpant {} disconnected from room {}, removing observer ...", participant.getIdentity(), room.getName());
 
             participant.setObserver(null);
         }
 
         @Override
         public void onRecordingStarted(Room room) {
-            System.out.println(String.format("Recording started for room %s", room.getName()));
+            LOG.info("Recording started for room {}", room.getName());
         }
 
         @Override
         public void onRecordingStopped(Room room) {
-            System.out.println(String.format("Recording stopped for room %s", room.getName()));
+            LOG.info("Recording stopped for room {}", room.getName());
         }
     }
 
@@ -412,11 +377,11 @@ public class VideoTest {
             this.room = "room-" + UUID.randomUUID().toString();
         }
 
-        System.out.println(String.format("Account SID:    %s", this.account));
-        System.out.println(String.format("API Key:        %s", this.apiKey));
-        System.out.println(String.format("API Key Secret: %s", this.apiKeySecret));
-        System.out.println(String.format("Media Region:   %s", this.mediaRegion));
-        System.out.println(String.format("Room Name:      %s", this.room));
+        LOG.info("Account SID:    {}", this.account);
+        LOG.info("API Key:        {}", this.apiKey);
+        LOG.info("API Key Secret: {}", this.apiKeySecret);
+        LOG.info("Media Region:   {}", this.mediaRegion);
+        LOG.info("Room Name:      {}", this.room);
 
         this.remoteParticipantObserver = new TestRemoteParticipantObserver();
     }
@@ -623,9 +588,13 @@ public class VideoTest {
 
     protected Room connectAlice(final List<VideoCodec> preferredVCodecs) throws InterruptedException, ExecutionException, TimeoutException {
         this.mfAlice = MediaFactory.create(new MediaOptions());
-        this.videoTrackAlice = this.mfAlice.createVideoTrack(false, MediaConstraints.defaultVideoConstraints());
+        assertNotNull("Alice's media factory object is valid", this.mfAlice);
+        this.videoTrackAlice = this.mfAlice.createVideoTrack(true, MediaConstraints.defaultVideoConstraints());
+        assertNotNull("Alice's video track object is valid", this.videoTrackAlice);
         this.audioTrackAlice = this.mfAlice.createAudioTrack(new AudioTrackOptions(true));
+        assertNotNull("Alice's audio track object is valid", this.audioTrackAlice);
 
+        LOG.info("Connecting Alice to the room {}", this.room);
         this.roomObserverAlice = new TestRoomObserver(this.remoteParticipantObserver);
         video.connect(getConnectOptions(this.tokenAlice,
                         this.room,
@@ -639,9 +608,13 @@ public class VideoTest {
 
     protected Room connectBob(final List<VideoCodec> preferredVCodecs) throws InterruptedException, ExecutionException, TimeoutException {
         this.mfBob = MediaFactory.create(new MediaOptions());
-        this.videoTrackBob = this.mfBob.createVideoTrack(false, MediaConstraints.defaultVideoConstraints());
+        assertNotNull("Bob's media factory object is valid", this.mfBob);
+        this.videoTrackBob = this.mfBob.createVideoTrack(true, MediaConstraints.defaultVideoConstraints());
+        assertNotNull("Bob's video track object is valid", this.videoTrackBob);
         this.audioTrackBob = this.mfBob.createAudioTrack(new AudioTrackOptions(true));
+        assertNotNull("Bob's audio track object is valid", this.audioTrackBob);
 
+        LOG.info("Connecting Bob to the room {}", this.room);
         this.roomObserverBob = new TestRoomObserver(this.remoteParticipantObserver);
         video.connect(getConnectOptions(this.tokenBob,
                         this.room,
@@ -685,7 +658,7 @@ public class VideoTest {
         }
 
         final com.twilio.rest.video.v1.Room restRoom = roomCreator.create(getTwilioRestClient());
-        System.out.println(String.format("ROOM: %s", restRoom.toString()));
+        LOG.debug("CREATED ROOM: {}", restRoom.toString());
         return restRoom.getStatus() == IN_PROGRESS;
     }
 
@@ -693,7 +666,7 @@ public class VideoTest {
         assertNotNull(room);
 
         final com.twilio.rest.video.v1.Room restRoom = new RoomUpdater(room, COMPLETED).update(getTwilioRestClient());
-        System.out.println(String.format("ROOM: %s", restRoom.toString()));
+        LOG.debug("COMPLETED ROOM: {}", restRoom.toString());
         return restRoom.getStatus() == COMPLETED;
     }
 }
